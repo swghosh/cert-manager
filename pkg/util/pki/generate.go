@@ -27,8 +27,8 @@ import (
 	"encoding/pem"
 	"fmt"
 
-	"github.com/cloudflare/circl/sign/mldsa/mldsa65"
 	v1 "github.com/cert-manager/cert-manager/pkg/apis/certmanager/v1"
+	"github.com/cloudflare/circl/sign/mldsa/mldsa65"
 )
 
 const (
@@ -196,8 +196,13 @@ func EncodeECPrivateKey(pk *ecdsa.PrivateKey) ([]byte, error) {
 // EncodeMLDSA65PrivateKey will marshal an ML-DSA-65 private key into PEM format.
 // ML-DSA keys are encoded as raw bytes in PKCS#8-style PEM format.
 func EncodeMLDSA65PrivateKey(pk *mldsa65.PrivateKey) ([]byte, error) {
-	keyBytes := pk.Bytes()
-	block := &pem.Block{Type: "PRIVATE KEY", Bytes: keyBytes}
+	//keyBytes := pk.Bytes()
+	//block := &pem.Block{Type: "PRIVATE KEY", Bytes: keyBytes}
+	keyBytes, err := pk.MarshalBinary()
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal ML-DSA-65 private key: %w", err)
+	}
+	block := &pem.Block{Type: "MLDSA65 PRIVATE KEY", Bytes: keyBytes}
 	return pem.EncodeToMemory(block), nil
 }
 

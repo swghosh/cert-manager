@@ -23,10 +23,11 @@ import (
 
 	"github.com/cert-manager/cert-manager/internal/pem"
 	"github.com/cert-manager/cert-manager/pkg/util/errors"
+	"github.com/cloudflare/circl/sign/mldsa/mldsa65"
 )
 
 // DecodePrivateKeyBytes will decode a PEM encoded private key into a crypto.Signer.
-// It supports ECDSA, RSA and EdDSA private keys only. All other types will return err.
+// It supports ECDSA, RSA, EdDSA and ML-DSA-65 private keys. All other types will return err.
 func DecodePrivateKeyBytes(keyBytes []byte) (crypto.Signer, error) {
 	// decode the private key pem
 	block, _, err := pem.SafeDecodePrivateKey(keyBytes)
@@ -36,16 +37,27 @@ func DecodePrivateKeyBytes(keyBytes []byte) (crypto.Signer, error) {
 
 	switch block.Type {
 	case "PRIVATE KEY":
+		// Try standard PKCS8 parsing first (RSA, ECDSA, Ed25519)
 		key, err := x509.ParsePKCS8PrivateKey(block.Bytes)
-		if err != nil {
-			return nil, errors.NewInvalidData("error parsing pkcs#8 private key: %s", err.Error())
+		if err == nil {
+			signer, ok := key.(crypto.Signer)
+			if !ok {
+				return nil, errors.NewInvalidData("error parsing pkcs#8 private key: invalid key type")
+			}
+			return signer, nil
 		}
 
-		signer, ok := key.(crypto.Signer)
-		if !ok {
-			return nil, errors.NewInvalidData("error parsing pkcs#8 private key: invalid key type")
+		// If standard PKCS8 parsing fails, try ML-DSA-65
+		// ML-DSA keys are stored as raw bytes from PrivateKey.Bytes()
+		mldsaKey := new(mldsa65.PrivateKey)
+		if unmarshalErr := mldsaKey.UnmarshalBinary(block.Bytes); unmarshalErr == nil {
+			// Successfully parsed as ML-DSA key
+			return mldsaKey, nil
 		}
-		return signer, nil
+
+		// If both failed, return the original PKCS8 error
+		return nil, errors.NewInvalidData("error parsing pkcs#8 private key: %s", err.Error())
+
 	case "EC PRIVATE KEY":
 		key, err := x509.ParseECPrivateKey(block.Bytes)
 		if err != nil {
@@ -62,6 +74,14 @@ func DecodePrivateKeyBytes(keyBytes []byte) (crypto.Signer, error) {
 		err = key.Validate()
 		if err != nil {
 			return nil, errors.NewInvalidData("rsa private key failed validation: %s", err.Error())
+		}
+		return key, nil
+	case "MLDSA65 PRIVATE KEY":
+		// Handle ML-DSA keys that might be encoded with custom header
+		key := new(mldsa65.PrivateKey)
+		err := key.UnmarshalBinary(block.Bytes)
+		if err != nil {
+			return nil, errors.NewInvalidData("error parsing ML-DSA-65 private key: %s", err.Error())
 		}
 		return key, nil
 	default:
