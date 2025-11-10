@@ -26,6 +26,7 @@ import (
 	"time"
 
 	certificatesv1 "k8s.io/api/certificates/v1"
+	"github.com/cloudflare/circl/sign/mldsa/mldsa65"
 
 	apiutil "github.com/cert-manager/cert-manager/pkg/api/util"
 	v1 "github.com/cert-manager/cert-manager/pkg/apis/certmanager/v1"
@@ -275,11 +276,28 @@ func CertificateTemplateFromCSRPEM(csrPEM []byte, validatorMutators ...Certifica
 		return nil, err
 	}
 
-	if err := csr.CheckSignature(); err != nil {
+	// Check signature - handle MLDSA65 specially
+	if err := checkCSRSignature(csr); err != nil {
 		return nil, err
 	}
 
 	return CertificateTemplateFromCSR(csr, validatorMutators...)
+}
+
+// checkCSRSignature checks the signature on a CSR, handling MLDSA65 CSRs specially
+func checkCSRSignature(csr *x509.CertificateRequest) error {
+	// For MLDSA65 keys, we need to verify the signature manually
+	if mldsaPub, ok := csr.PublicKey.(*mldsa65.PublicKey); ok {
+		// Verify the MLDSA65 signature
+		valid := mldsa65.Verify(mldsaPub, csr.RawTBSCertificateRequest, nil, csr.Signature)
+		if !valid {
+			return fmt.Errorf("MLDSA65 signature verification failed")
+		}
+		return nil
+	}
+	
+	// For other key types, use the standard CheckSignature method
+	return csr.CheckSignature()
 }
 
 // CertificateTemplateFromCertificate will create a x509.Certificate for the given
