@@ -1,0 +1,75 @@
+mutation ProvisionCertificate(
+    $certificateId: UUID!
+    $cloudKeystoreId: UUID!
+    $wsClientId: UUID!
+    $options: CertificateProvisioningOptionsInput
+) {
+    provisionToCloudKeystore(certificateId: $certificateId, cloudKeystoreId: $cloudKeystoreId, wsClientId: $wsClientId, options: $options) {
+        workflowId
+        workflowName
+    }
+}
+
+mutation ProvisionCertificateToMachineIdentity($machineIdentityId: UUID!, $wsClientId: UUID!, $certificateId: UUID){
+    provisionToCloudMachineIdentity(machineIdentityId: $machineIdentityId, wsClientId: $wsClientId,certificateId: $certificateId ){
+        workflowId
+        workflowName
+    }
+}
+
+query GetCloudProviders($status: CloudProviderStatus, $providerType: CloudProviderType, $name: String!){
+    cloudProviders(filter: {status: $status, type: $providerType, name: $name}){
+        nodes {
+            id
+            name
+            type
+            status
+            statusDetails
+            keystoresCount
+        }
+    }
+}
+
+query GetCloudKeystores($cloudKeystoreId: UUID, $cloudKeystoreName: String, $cloudProviderId: UUID, $cloudProviderName: String) {
+    cloudKeystores(filter: {cloudKeystoreId: $cloudKeystoreId, cloudKeystoreName: $cloudKeystoreName, cloudProviderId: $cloudProviderId, cloudProviderName: $cloudProviderName}) {
+        nodes {
+            id
+            name
+            type
+            machineIdentitiesCount
+        }
+    }
+}
+
+query GetMachineIdentities($cloudKeystoreId: UUID, $machineIdentityId: UUID, $fingerprints: [String!], $newlyDiscovered: Boolean, $metadata: String){
+    cloudMachineIdentities(filter: {cloudKeystoreId: $cloudKeystoreId, machineIdentityId: $machineIdentityId, fingerprints: $fingerprints, newlyDiscovered: $newlyDiscovered, metadata: $metadata}){
+        nodes {
+            id
+            cloudKeystoreId
+            cloudKeystoreName
+            cloudProviderId
+            cloudProviderName
+            metadata {
+                ... on AWSCertificateMetadata {
+                    arn
+                }
+                ... on AzureCertificateMetadata {
+                    azureId
+                    name
+                    version
+                }
+                ... on GCPCertificateMetadata {
+                    gcpId
+                    name
+                }
+            }
+            status
+            statusDetails
+            certificateId
+        }
+    }
+}
+
+mutation DeleteMachineIdentities($machineIdentityIds: [UUID!]!){
+    deleteCloudMachineIdentities(machineIdentityIds: $machineIdentityIds)
+}
