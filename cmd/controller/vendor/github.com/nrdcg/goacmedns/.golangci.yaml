@@ -1,0 +1,42 @@
+
+linters:
+  enable-all: true
+  disable:
+    - exportloopref
+    - stylecheck
+    - gosec
+    - dupl
+    - depguard
+    - lll
+    - prealloc
+    - varnamelen
+    - exhaustive
+    - exhaustruct
+    - paralleltest
+    - testpackage
+    - mnd
+
+linters-settings:
+  gocyclo:
+    min-complexity: 25
+  misspell:
+    locale: "US"
+  tagliatelle:
+    case:
+      rules:
+        "json": "snake"
+
+issues:
+  exclude-rules:
+    - path: (.*)_test.go
+      linters:
+        - gochecknoglobals
+        - funlen
+        - cyclop
+
+output:
+  show-stats: true
+  sort-results: true
+  sort-order:
+    - linter
+    - file
