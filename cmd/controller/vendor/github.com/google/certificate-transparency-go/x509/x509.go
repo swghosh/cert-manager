@@ -73,6 +73,7 @@ import (
 	cryptobyte_asn1 "golang.org/x/crypto/cryptobyte/asn1"
 	"golang.org/x/crypto/ed25519"
 
+	"github.com/cloudflare/circl/sign/mldsa/mldsa65"
 	"github.com/google/certificate-transparency-go/asn1"
 	"github.com/google/certificate-transparency-go/tls"
 	"github.com/google/certificate-transparency-go/x509/pkix"
@@ -144,6 +145,10 @@ func marshalPublicKey(pub interface{}) (publicKeyBytes []byte, publicKeyAlgorith
 	case ed25519.PublicKey:
 		publicKeyBytes = pub
 		publicKeyAlgorithm.Algorithm = OIDPublicKeyEd25519
+	case *mldsa65.PublicKey:
+		// ML-DSA-65 support
+		publicKeyBytes = pub.Bytes()
+		publicKeyAlgorithm.Algorithm = asn1.ObjectIdentifier{2, 16, 840, 1, 101, 3, 4, 3, 17} // ML-DSA-65 OID
 	default:
 		return nil, pkix.AlgorithmIdentifier{}, fmt.Errorf("x509: unsupported public key type: %T", pub)
 	}
@@ -1137,6 +1142,14 @@ func checkSignature(algo SignatureAlgorithm, signed, signature []byte, publicKey
 		}
 		if !ed25519.Verify(pub, signed, signature) {
 			return errors.New("x509: Ed25519 verification failure")
+		}
+		return
+	case *mldsa65.PublicKey:
+		// ML-DSA-65 support
+		// For ML-DSA, we don't check pubKeyAlgo since it's UnknownPublicKeyAlgorithm
+		valid := mldsa65.Verify(pub, signed, nil, signature)
+		if !valid {
+			return errors.New("x509: ML-DSA-65 verification failure")
 		}
 		return
 	}
@@ -2638,8 +2651,14 @@ func signingParamsForPublicKey(pub interface{}, requestedSigAlgo SignatureAlgori
 		pubType = Ed25519
 		sigAlgo.Algorithm = oidSignatureEd25519
 
+	case *mldsa65.PublicKey:
+		// ML-DSA-65 support
+		pubType = UnknownPublicKeyAlgorithm                                        // Use Unknown as ML-DSA is not in standard x509 yet
+		sigAlgo.Algorithm = asn1.ObjectIdentifier{2, 16, 840, 1, 101, 3, 4, 3, 17} // ML-DSA-65 OID
+		hashFunc = crypto.Hash(0)                                                  // ML-DSA doesn't use pre-hashing
+
 	default:
-		err = errors.New("x509: only RSA, ECDSA and Ed25519 keys supported")
+		err = errors.New("x509: only RSA, ECDSA, Ed25519 and ML-DSA keys supported")
 	}
 
 	if err != nil {
