@@ -389,7 +389,7 @@ func SignCertificate(template *x509.Certificate, issuerCert *x509.Certificate, p
 	}
 
 	var derBytes []byte
-	
+
 	// Special handling for ML-DSA: x509.CreateCertificate doesn't support it yet
 	if _, isMLDSA := typedSigner.(*mldsa65.PrivateKey); isMLDSA {
 		derBytes, err = createMLDSACertificate(template, issuerCert, publicKey, typedSigner)
@@ -425,12 +425,12 @@ func createMLDSACertificate(template *x509.Certificate, parent *x509.Certificate
 	if !ok {
 		return nil, fmt.Errorf("private key is not ML-DSA type")
 	}
-	
+
 	mldsaPub, ok := pub.(*mldsa65.PublicKey)
 	if !ok {
 		return nil, fmt.Errorf("public key is not ML-DSA type")
 	}
-	
+
 	// Use the template values that are already set by cert-manager
 	// Set defaults only if not provided
 	if template.SerialNumber == nil {
@@ -441,15 +441,15 @@ func createMLDSACertificate(template *x509.Certificate, parent *x509.Certificate
 		}
 		template.SerialNumber = serialNumber
 	}
-	
+
 	if template.NotBefore.IsZero() {
 		template.NotBefore = time.Now().Add(-5 * time.Minute)
 	}
-	
+
 	if template.NotAfter.IsZero() {
 		template.NotAfter = template.NotBefore.Add(90 * 24 * time.Hour)
 	}
-	
+
 	// Build complete X.509 certificate structure manually
 	// Marshal the subject
 	var subjectBytes []byte
@@ -462,7 +462,7 @@ func createMLDSACertificate(template *x509.Certificate, parent *x509.Certificate
 			return nil, fmt.Errorf("failed to marshal subject: %w", err)
 		}
 	}
-	
+
 	// Get issuer bytes
 	var issuerBytes []byte
 	if parent != nil && len(parent.RawSubject) > 0 {
@@ -476,10 +476,10 @@ func createMLDSACertificate(template *x509.Certificate, parent *x509.Certificate
 		// Self-signed: issuer = subject
 		issuerBytes = subjectBytes
 	}
-	
+
 	// Collect all extensions from the template
 	var extensions []pkix.Extension
-	
+
 	// Add SubjectKeyId if set
 	if len(template.SubjectKeyId) > 0 {
 		skidBytes, _ := asn1.Marshal(template.SubjectKeyId)
@@ -488,7 +488,7 @@ func createMLDSACertificate(template *x509.Certificate, parent *x509.Certificate
 			Value: skidBytes,
 		})
 	}
-	
+
 	// Add AuthorityKeyId if set
 	if len(template.AuthorityKeyId) > 0 {
 		akidBytes, _ := asn1.Marshal(template.AuthorityKeyId)
@@ -497,7 +497,7 @@ func createMLDSACertificate(template *x509.Certificate, parent *x509.Certificate
 			Value: akidBytes,
 		})
 	}
-	
+
 	// Add KeyUsage if set
 	if template.KeyUsage != 0 {
 		kuBytes, _ := marshalKeyUsage(template.KeyUsage)
@@ -507,7 +507,7 @@ func createMLDSACertificate(template *x509.Certificate, parent *x509.Certificate
 			Value:    kuBytes,
 		})
 	}
-	
+
 	// Add BasicConstraints if set
 	if template.BasicConstraintsValid {
 		bcBytes, _ := marshalBasicConstraints(template.IsCA, template.MaxPathLen, template.MaxPathLenZero)
@@ -517,10 +517,10 @@ func createMLDSACertificate(template *x509.Certificate, parent *x509.Certificate
 			Value:    bcBytes,
 		})
 	}
-	
+
 	// Add all ExtraExtensions from template (includes SANs, etc.)
 	extensions = append(extensions, template.ExtraExtensions...)
-	
+
 	// Build TBSCertificate
 	pubKeyBytes := mldsaPub.Bytes()
 	tbsCert := struct {
@@ -543,14 +543,14 @@ func createMLDSACertificate(template *x509.Certificate, parent *x509.Certificate
 		SignatureAlgorithm: pkix.AlgorithmIdentifier{
 			Algorithm: asn1.ObjectIdentifier{2, 16, 840, 1, 101, 3, 4, 3, 17}, // ML-DSA-65 OID (NIST draft)
 		},
-		Issuer:  asn1.RawValue{FullBytes: issuerBytes},
-		Subject: asn1.RawValue{FullBytes: subjectBytes},
+		Issuer:     asn1.RawValue{FullBytes: issuerBytes},
+		Subject:    asn1.RawValue{FullBytes: subjectBytes},
 		Extensions: extensions,
 	}
-	
+
 	tbsCert.Validity.NotBefore = template.NotBefore
 	tbsCert.Validity.NotAfter = template.NotAfter
-	
+
 	tbsCert.PublicKey.Algorithm = pkix.AlgorithmIdentifier{
 		Algorithm: asn1.ObjectIdentifier{2, 16, 840, 1, 101, 3, 4, 3, 17}, // ML-DSA-65 OID
 	}
@@ -558,19 +558,19 @@ func createMLDSACertificate(template *x509.Certificate, parent *x509.Certificate
 		Bytes:     pubKeyBytes,
 		BitLength: len(pubKeyBytes) * 8,
 	}
-	
+
 	// Marshal TBSCertificate
 	tbsBytes, err := asn1.Marshal(tbsCert)
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal TBSCertificate: %w", err)
 	}
-	
+
 	// Sign with ML-DSA
 	signature, err := mldsaPriv.Sign(nil, tbsBytes, crypto.Hash(0))
 	if err != nil {
 		return nil, fmt.Errorf("failed to sign certificate: %w", err)
 	}
-	
+
 	// Build final certificate
 	certStruct := struct {
 		TBSCertificate     asn1.RawValue
@@ -586,12 +586,12 @@ func createMLDSACertificate(template *x509.Certificate, parent *x509.Certificate
 			BitLength: len(signature) * 8,
 		},
 	}
-	
+
 	certDER, err := asn1.Marshal(certStruct)
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal certificate: %w", err)
 	}
-	
+
 	return certDER, nil
 }
 
@@ -601,13 +601,13 @@ func marshalKeyUsage(ku x509.KeyUsage) ([]byte, error) {
 	var a [2]byte
 	a[0] = byte(ku)
 	a[1] = byte(ku >> 8)
-	
+
 	// Find the last set bit
 	ret := a[0:]
 	if a[1] != 0 {
 		ret = a[:]
 	}
-	
+
 	return asn1.Marshal(asn1.BitString{Bytes: ret, BitLength: 9})
 }
 
@@ -617,7 +617,7 @@ func marshalBasicConstraints(isCA bool, maxPathLen int, maxPathLenZero bool) ([]
 		IsCA       bool `asn1:"optional"`
 		MaxPathLen int  `asn1:"optional,default:-1"`
 	}
-	
+
 	bc := basicConstraints{IsCA: isCA}
 	if isCA {
 		if maxPathLenZero {
@@ -628,7 +628,7 @@ func marshalBasicConstraints(isCA bool, maxPathLen int, maxPathLenZero bool) ([]
 			bc.MaxPathLen = -1 // unlimited
 		}
 	}
-	
+
 	return asn1.Marshal(bc)
 }
 
@@ -658,13 +658,176 @@ func SignCSRTemplate(caCerts []*x509.Certificate, caPrivateKey crypto.Signer, te
 
 // EncodeCSR calls x509.CreateCertificateRequest to sign the given CSR template.
 // It returns a DER encoded signed CSR.
+// For MLDSA65 keys, it manually creates and signs the CSR since x509 doesn't support them yet.
 func EncodeCSR(template *x509.CertificateRequest, key crypto.Signer) ([]byte, error) {
+	// Special handling for MLDSA65 keys
+	if mldsaKey, ok := key.(*mldsa65.PrivateKey); ok {
+		return encodeMLDSA65CSR(template, mldsaKey)
+	}
+
+	// Standard x509 handling for other key types
 	derBytes, err := x509.CreateCertificateRequest(rand.Reader, template, key)
 	if err != nil {
 		return nil, fmt.Errorf("error creating x509 certificate: %s", err.Error())
 	}
 
 	return derBytes, nil
+}
+
+// encodeMLDSA65CSR creates a CSR for MLDSA65 keys manually since x509 doesn't support them yet
+func encodeMLDSA65CSR(template *x509.CertificateRequest, key *mldsa65.PrivateKey) ([]byte, error) {
+	// Get the public key bytes
+	pubKey := key.Public().(*mldsa65.PublicKey)
+	pubKeyBytes := pubKey.Bytes()
+
+	// Build the subject
+	var subjectBytes []byte
+	var err error
+	if len(template.RawSubject) > 0 {
+		subjectBytes = template.RawSubject
+	} else {
+		subjectBytes, err = asn1.Marshal(template.Subject.ToRDNSequence())
+		if err != nil {
+			return nil, fmt.Errorf("failed to marshal subject: %w", err)
+		}
+	}
+
+	// Build attributes (including extensions if any)
+	var rawAttributes []asn1.RawValue
+
+	// If we have extensions to add, create an extensionRequest attribute
+	if len(template.Extensions) > 0 || len(template.ExtraExtensions) > 0 ||
+		len(template.DNSNames) > 0 || len(template.EmailAddresses) > 0 ||
+		len(template.IPAddresses) > 0 || len(template.URIs) > 0 {
+
+		var extensions []pkix.Extension
+		extensions = append(extensions, template.Extensions...)
+		extensions = append(extensions, template.ExtraExtensions...)
+
+		// Add SANs if present
+		if len(template.DNSNames) > 0 || len(template.EmailAddresses) > 0 ||
+			len(template.IPAddresses) > 0 || len(template.URIs) > 0 {
+			gns := GeneralNames{
+				DNSNames:    template.DNSNames,
+				IPAddresses: template.IPAddresses,
+				RFC822Names: template.EmailAddresses,
+				UniformResourceIdentifiers: func() []string {
+					var uris []string
+					for _, uri := range template.URIs {
+						if uri != nil {
+							uris = append(uris, uri.String())
+						}
+					}
+					return uris
+				}(),
+			}
+			hasSubject := len(subjectBytes) > 2 // More than just empty SEQUENCE
+			sanExtension, err := MarshalSANs(gns, hasSubject)
+			if err == nil {
+				extensions = append(extensions, sanExtension)
+			}
+		}
+
+		// Create the extensionRequest attribute
+		if len(extensions) > 0 {
+			extBytes, err := asn1.Marshal(extensions)
+			if err != nil {
+				return nil, fmt.Errorf("failed to marshal extensions: %w", err)
+			}
+
+			// extensionRequest OID: 1.2.840.113549.1.9.14
+			attr := struct {
+				Type  asn1.ObjectIdentifier
+				Value asn1.RawValue `asn1:"set"`
+			}{
+				Type: asn1.ObjectIdentifier{1, 2, 840, 113549, 1, 9, 14},
+				Value: asn1.RawValue{
+					Class:      asn1.ClassUniversal,
+					Tag:        asn1.TagSequence,
+					IsCompound: true,
+					Bytes:      extBytes,
+				},
+			}
+
+			attrBytes, err := asn1.Marshal(attr)
+			if err != nil {
+				return nil, fmt.Errorf("failed to marshal attributes: %w", err)
+			}
+
+			var rawAttr asn1.RawValue
+			if _, err := asn1.Unmarshal(attrBytes, &rawAttr); err != nil {
+				return nil, fmt.Errorf("failed to unmarshal raw attribute: %w", err)
+			}
+
+			rawAttributes = append(rawAttributes, rawAttr)
+		}
+	}
+
+	// Build the TBSCertificateRequest structure
+	type publicKeyInfo struct {
+		Algorithm pkix.AlgorithmIdentifier
+		PublicKey asn1.BitString
+	}
+
+	type tbsCertificateRequest struct {
+		Version       int
+		Subject       asn1.RawValue
+		PublicKey     publicKeyInfo
+		RawAttributes []asn1.RawValue `asn1:"tag:0"`
+	}
+
+	tbsCSR := tbsCertificateRequest{
+		Version: 0,
+		Subject: asn1.RawValue{FullBytes: subjectBytes},
+		PublicKey: publicKeyInfo{
+			Algorithm: pkix.AlgorithmIdentifier{
+				Algorithm: asn1.ObjectIdentifier{2, 16, 840, 1, 101, 3, 4, 3, 17}, // ML-DSA-65 OID
+			},
+			PublicKey: asn1.BitString{
+				Bytes:     pubKeyBytes,
+				BitLength: len(pubKeyBytes) * 8,
+			},
+		},
+		RawAttributes: rawAttributes,
+	}
+
+	// Marshal the TBSCertificateRequest
+	tbsBytes, err := asn1.Marshal(tbsCSR)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal TBSCertificateRequest: %w", err)
+	}
+
+	// Sign the TBSCertificateRequest
+	signature, err := key.Sign(nil, tbsBytes, crypto.Hash(0))
+	if err != nil {
+		return nil, fmt.Errorf("failed to sign CSR: %w", err)
+	}
+
+	// Build the final CSR structure
+	type certificateRequest struct {
+		TBSCSR             asn1.RawContent
+		SignatureAlgorithm pkix.AlgorithmIdentifier
+		SignatureValue     asn1.BitString
+	}
+
+	csr := certificateRequest{
+		TBSCSR: tbsBytes,
+		SignatureAlgorithm: pkix.AlgorithmIdentifier{
+			Algorithm: asn1.ObjectIdentifier{2, 16, 840, 1, 101, 3, 4, 3, 17}, // ML-DSA-65 OID
+		},
+		SignatureValue: asn1.BitString{
+			Bytes:     signature,
+			BitLength: len(signature) * 8,
+		},
+	}
+
+	// Marshal the complete CSR
+	csrBytes, err := asn1.Marshal(csr)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal CSR: %w", err)
+	}
+
+	return csrBytes, nil
 }
 
 // EncodeX509 will encode a single *x509.Certificate into PEM format.
