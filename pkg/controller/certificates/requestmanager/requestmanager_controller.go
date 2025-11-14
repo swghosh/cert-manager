@@ -201,29 +201,29 @@ func (c *controller) ProcessItem(ctx context.Context, key types.NamespacedName) 
 		return err
 	}
 
-	requests, err = c.deleteRequestsNotMatchingSpec(ctx, crt, pk.Public(), requests...)
-	if err != nil {
-		return err
-	}
+	// requests, err = c.deleteRequestsNotMatchingSpec(ctx, crt, pk.Public(), requests...)
+	// if err != nil {
+	// 	return err
+	// }
 
-	requests, err = c.deleteCurrentFailedRequests(ctx, crt, requests...)
-	if err != nil {
-		return err
-	}
+	// requests, err = c.deleteCurrentFailedRequests(ctx, crt, requests...)
+	// if err != nil {
+	// 	return err
+	// }
 
-	if len(requests) > 1 {
-		// TODO: we should handle this case better, but for now do nothing to
-		//  avoid getting into loops where we keep creating multiple requests
-		//  and deleting them again.
-		log.V(logf.ErrorLevel).Info("Multiple matching CertificateRequest resources exist, delete one of them. This is likely an error and should be reported on the issue tracker!")
-		return nil
-	}
+	// if len(requests) > 1 {
+	// 	// TODO: we should handle this case better, but for now do nothing to
+	// 	//  avoid getting into loops where we keep creating multiple requests
+	// 	//  and deleting them again.
+	// 	log.V(logf.ErrorLevel).Info("Multiple matching CertificateRequest resources exist, delete one of them. This is likely an error and should be reported on the issue tracker!")
+	// 	return nil
+	// }
 
-	if len(requests) == 1 {
-		// Nothing to do as we've already verified that the CertificateRequest
-		// is up to date above.
-		return nil
-	}
+	// if len(requests) == 1 {
+	// 	// Nothing to do as we've already verified that the CertificateRequest
+	// 	// is up to date above.
+	// 	return nil
+	// }
 
 	return c.createNewCertificateRequest(ctx, crt, pk, nextRevision, nextPrivateKeySecret.Name)
 }
