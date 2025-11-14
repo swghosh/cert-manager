@@ -77,14 +77,6 @@ func DecodePrivateKeyBytes(keyBytes []byte) (crypto.Signer, error) {
 			return nil, errors.NewInvalidData("rsa private key failed validation: %s", err.Error())
 		}
 		return key, nil
-	case "MLDSA65 PRIVATE KEY":
-		// Handle ML-DSA keys that might be encoded with custom header
-		key := new(mldsa65.PrivateKey)
-		err := key.UnmarshalBinary(block.Bytes)
-		if err != nil {
-			return nil, errors.NewInvalidData("error parsing ML-DSA-65 private key: %s", err.Error())
-		}
-		return key, nil
 	default:
 		return nil, errors.NewInvalidData("unknown private key type: %s", block.Type)
 	}
@@ -99,25 +91,25 @@ func parseMLDSAPKCS8PrivateKey(pkcs8Bytes []byte) (*mldsa65.PrivateKey, error) {
 		Algo       pkix.AlgorithmIdentifier
 		PrivateKey []byte
 	}
-	
+
 	_, err := asn1.Unmarshal(pkcs8Bytes, &pkcs8)
 	if err != nil {
 		return nil, err
 	}
-	
+
 	// Check if this is an ML-DSA-65 key (OID: 2.16.840.1.101.3.4.3.18)
 	mldsaOID := asn1.ObjectIdentifier{2, 16, 840, 1, 101, 3, 4, 3, 18}
 	if !pkcs8.Algo.Algorithm.Equal(mldsaOID) {
 		return nil, errors.NewInvalidData("not an ML-DSA-65 private key")
 	}
-	
+
 	// Create ML-DSA key from the raw bytes
 	key := new(mldsa65.PrivateKey)
 	err = key.UnmarshalBinary(pkcs8.PrivateKey)
 	if err != nil {
 		return nil, err
 	}
-	
+
 	return key, nil
 }
 
