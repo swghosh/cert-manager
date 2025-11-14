@@ -46,8 +46,8 @@ func TestEncodeMLDSA65CSR(t *testing.T) {
 			OrganizationalUnit: []string{"Engineering"},
 			CommonName:         "test.example.com",
 		},
-		DNSNames:    []string{"test.example.com", "localhost", "*.example.com"},
-		IPAddresses: []net.IP{net.IPv4(127, 0, 0, 1), net.IPv6loopback},
+		DNSNames:       []string{"test.example.com", "localhost", "*.example.com"},
+		IPAddresses:    []net.IP{net.IPv4(127, 0, 0, 1), net.IPv6loopback},
 		EmailAddresses: []string{"test@example.com"},
 	}
 
@@ -65,7 +65,7 @@ func TestEncodeMLDSA65CSR(t *testing.T) {
 			SignatureAlgorithm       pkix.AlgorithmIdentifier
 			Signature                asn1.BitString
 		}
-		
+
 		rest, err := asn1.Unmarshal(csrBytes, &csr)
 		if err != nil {
 			t.Fatalf("Failed to unmarshal CSR: %v", err)
@@ -190,7 +190,7 @@ func TestMLDSA65CSRWithNoExtensions(t *testing.T) {
 		SignatureAlgorithm       pkix.AlgorithmIdentifier
 		Signature                asn1.BitString
 	}
-	
+
 	_, err = asn1.Unmarshal(csrBytes, &csr)
 	if err != nil {
 		t.Fatalf("Failed to unmarshal minimal CSR: %v", err)

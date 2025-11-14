@@ -695,7 +695,7 @@ func EncodeCSR(template *x509.CertificateRequest, key crypto.Signer) ([]byte, er
 func encodeMLDSA65CSR(template *x509.CertificateRequest, key *mldsa65.PrivateKey) ([]byte, error) {
 	// ML-DSA-65 OID (FIPS 204)
 	mldsaOid := asn1.ObjectIdentifier{2, 16, 840, 1, 101, 3, 4, 3, 18}
-	
+
 	// Get the public key bytes
 	pubKey := key.Public().(*mldsa65.PublicKey)
 	publicKeyBytes := pubKey.Bytes()
@@ -731,7 +731,7 @@ func encodeMLDSA65CSR(template *x509.CertificateRequest, key *mldsa65.PrivateKey
 
 	// Build attributes
 	var attributes []interface{}
-	
+
 	// If we have extensions to add, create an extensionRequest attribute
 	if len(template.Extensions) > 0 || len(template.ExtraExtensions) > 0 ||
 		len(template.DNSNames) > 0 || len(template.EmailAddresses) > 0 ||
@@ -774,7 +774,7 @@ func encodeMLDSA65CSR(template *x509.CertificateRequest, key *mldsa65.PrivateKey
 
 		// Attribute for Extension Request (OID 1.2.840.113549.1.9.14)
 		extensionRequestOID := asn1.ObjectIdentifier{1, 2, 840, 113549, 1, 9, 14}
-		
+
 		// The attribute value needs to be a SET containing the SEQUENCE of extensions
 		attribute := struct {
 			Type   asn1.ObjectIdentifier
@@ -785,7 +785,7 @@ func encodeMLDSA65CSR(template *x509.CertificateRequest, key *mldsa65.PrivateKey
 				{FullBytes: extensionsBytes},
 			},
 		}
-		
+
 		attributes = append(attributes, attribute)
 	}
 
