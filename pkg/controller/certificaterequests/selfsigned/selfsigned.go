@@ -163,7 +163,7 @@ func (s *SelfSigned) Sign(ctx context.Context, cr *cmapi.CertificateRequest, iss
 	var template *x509.Certificate
 	template, err = pki.CertificateTemplateFromCertificateRequest(cr)
 	if err != nil {
-		message := "Error generating certificate template"
+		message := "[x2] Error generating certificate template"
 		s.reporter.Failed(cr, err, "ErrorGenerating", message)
 		log.Error(err, message)
 		return nil, nil
@@ -196,7 +196,7 @@ func (s *SelfSigned) Sign(ctx context.Context, cr *cmapi.CertificateRequest, iss
 			err = errors.New("CSR not signed by referenced private key")
 		}
 
-		message := "Error generating certificate template"
+		message := "[x3] Error generating certificate template"
 		s.reporter.Failed(cr, err, "ErrorKeyMatch", message)
 		log.Error(err, message)
 

@@ -120,7 +120,7 @@ func (c *CA) Sign(ctx context.Context, csr *certificatesv1.CertificateSigningReq
 
 	template, err := c.templateGenerator(csr)
 	if err != nil {
-		message := fmt.Sprintf("Error generating certificate template: %s", err)
+		message := fmt.Sprintf("[x4] Error generating certificate template: %s", err)
 		c.recorder.Event(csr, corev1.EventTypeWarning, "SigningError", message)
 		util.CertificateSigningRequestSetFailed(csr, "SigningError", message)
 		_, err := util.UpdateOrApplyStatus(ctx, c.certClient, csr, certificatesv1.CertificateFailed, c.fieldManager)
